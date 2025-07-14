@@ -90,61 +90,82 @@ class Portfolio {
 
   setupCarousels() {
     const carouselContainers = document.querySelectorAll(".carousel-container");
-
-    carouselContainers.forEach((container, index) => {
-      const slides = container.querySelectorAll(".carousel-slide");
-      const dots = container.querySelectorAll(".dot");
+    carouselContainers.forEach((container) => {
+      const slides = Array.from(container.querySelectorAll(".carousel-slide"));
+      const dots = Array.from(container.querySelectorAll(".carousel-dot"));
       const prevBtn = container.querySelector(".carousel-prev");
       const nextBtn = container.querySelector(".carousel-next");
-      const autoSlideInterval =
-        Number.parseInt(container.dataset.autoSlide) || 3000;
+      let currentSlide = 0;
+      let autoSlideInterval = null;
+      const autoSlideDelay = parseInt(container.dataset.autoSlide, 10) || 3000;
 
-      const carousel = {
-        container,
-        slides,
-        dots,
-        currentSlide: 0,
-        totalSlides: slides.length,
-        autoSlideInterval,
-        intervalId: null,
-        isPaused: false,
-      };
-
-      // Setup navigation
-      if (prevBtn && nextBtn) {
-        prevBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.prevSlide(carousel);
+      function goToSlide(index) {
+        slides.forEach((slide, i) => {
+          slide.classList.toggle("active", i === index);
         });
-        nextBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.nextSlide(carousel);
+        dots.forEach((dot, i) => {
+          dot.classList.toggle("active", i === index);
+          // Atur warna dot
+          if (i === index) {
+            dot.classList.add("bg-white/80");
+            dot.classList.remove("bg-white/40");
+          } else {
+            dot.classList.remove("bg-white/80");
+            dot.classList.add("bg-white/40");
+          }
         });
+        currentSlide = index;
       }
 
-      // Setup dots
-      dots.forEach((dot, dotIndex) => {
-        dot.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.goToSlide(carousel, dotIndex);
-        });
+      function nextSlide() {
+        goToSlide((currentSlide + 1) % slides.length);
+        resetAutoSlide();
+      }
+
+      function prevSlide() {
+        goToSlide((currentSlide - 1 + slides.length) % slides.length);
+        resetAutoSlide();
+      }
+
+      function dotClickHandler(i) {
+        goToSlide(i);
+        resetAutoSlide();
+      }
+
+      function startAutoSlide() {
+        stopAutoSlide();
+        autoSlideInterval = setInterval(() => {
+          goToSlide((currentSlide + 1) % slides.length);
+        }, autoSlideDelay);
+      }
+
+      function stopAutoSlide() {
+        if (autoSlideInterval) clearInterval(autoSlideInterval);
+      }
+
+      function resetAutoSlide() {
+        stopAutoSlide();
+        startAutoSlide();
+      }
+
+      // Attach event listeners if buttons exist
+      if (nextBtn) {
+        nextBtn.addEventListener("click", nextSlide);
+      }
+      if (prevBtn) {
+        prevBtn.addEventListener("click", prevSlide);
+      }
+      dots.forEach((dot, i) => {
+        dot.addEventListener("click", () => dotClickHandler(i));
       });
 
-      // Pause on hover
-      container.addEventListener("mouseenter", () =>
-        this.pauseCarousel(carousel)
-      );
-      container.addEventListener("mouseleave", () =>
-        this.resumeCarousel(carousel)
-      );
+      // Pause auto-slide on hover, resume on mouseleave
+      container.addEventListener("mouseenter", stopAutoSlide);
+      container.addEventListener("mouseleave", startAutoSlide);
 
-      // Start auto-slide
-      this.startAutoSlide(carousel);
-
-      this.carousels.push(carousel);
+      // Init
+      goToSlide(0);
+      startAutoSlide();
     });
   }
 
